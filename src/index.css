@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+/* 自定义 Markdown 内部的代码块样式 */
+.prose pre {
+  background-color: #0f172a !important; /* 极深蓝黑色 */
+  border: 1px solid #1e293b;
+  padding: 1rem;
+  border-radius: 0.75rem;
+}
+
+.prose code {
+  color: #e2e8f0;
+  font-weight: 500;
+}
