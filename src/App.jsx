@@ -36,15 +36,15 @@ function App() {
     const saved = localStorage.getItem("chats_history");
     return saved ? JSON.parse(saved) : { 0: [] };
   });
+  //实现对话本地存储
   useEffect(() => {
     localStorage.setItem("chats_title", JSON.stringify(chats));
     localStorage.setItem("chats_history", JSON.stringify(allMessages));
   }, [chats, allMessages]);
-
   const currentMessages = allMessages[activeId];
   function handleCreateNewChat() {
     setIsOpened(true);
-    const newTitle = prompt("请输入对话标题");
+    const newTitle = "默认对话";
     if (newTitle) {
       const newChat = { id: Date.now(), title: newTitle };
       setChats((prev) => [...prev, newChat]);
@@ -54,8 +54,26 @@ function App() {
       setIsOpened(false);
     }
   }
+  function handleDeleteChat(id) {
+    if (window.confirm("确定删除该对话吗？")) {
+      setChats((prev) => prev.filter((chat) => chat.id !== id));
+      setallMessages((prev) => {
+        const newAll = { ...prev };
+        delete newAll[id];
+        return newAll;
+      });
+      if (activeId === id) {
+        const remainingChats = chats.filter((chat) => chat.id !== id);
+        setActiveId(remainingChats[0].id);
+        setCurrentItem(remainingChats[0]);
+      }
+    }
+  }
+
+  //用户发送问题给AI
   async function HandleSendMessages(content) {
-    if (!content) return;
+    if (!content || isLoading) return;
+    const isFirstMessage = currentMessages.length === 0;
     const newMessage = {
       id: Date.now(),
       role: "user",
@@ -102,7 +120,40 @@ function App() {
     } finally {
       setIsLoading(false);
     }
+    if (isFirstMessage) {
+      generateAutoTitle(content, activeId);
+    }
   }
+  async function generateAutoTitle(content, activeId) {
+    try {
+      const response = await aiClient.post("/chat/completions", {
+        model: "deepseek-chat",
+        messages: [
+          {
+            role: "system",
+            content:
+              "你是一个标题生成器,请根据用户的内容,生成一个8个字以内的标题,，不要包含标点符号，不要解释，直接返回标题文字。",
+          },
+          {
+            role: "user",
+            content: content,
+          },
+        ],
+      });
+      const fullText = response.data.choices[0].message.content;
+      setChats((prev) =>
+        prev.map((chat) => ({
+          ...chat,
+          title: chat.id === activeId ? fullText : chat.title,
+        }))
+      );
+      setCurrentItem((prev) => ({ ...prev, title: fullText, id: activeId }));
+    } catch (error) {
+      console.error("请求失败了：", error);
+    }
+  }
+
+  //模拟流式传输效果
   function displayTextWithTyping(text) {
     const id = Date.now();
     setallMessages((prev) => ({
@@ -125,6 +176,7 @@ function App() {
       }
     }, 30);
   }
+
   return (
     <div className="flex h-screen bg-[#F9FAFB] text-slate-900 font-sans">
       {/* 侧边栏：采用深色渐变或纯净白 */}
@@ -135,13 +187,13 @@ function App() {
             <ChatItem
               key={chat.id}
               isActive={chat.id === activeId}
+              title={chat.title}
               onClick={() => {
                 setActiveId(chat.id);
                 setCurrentItem(chat);
               }}
-            >
-              {chat.title}
-            </ChatItem>
+              onDeleteChat={() => handleDeleteChat(chat.id)}
+            />
           ))}
         </ChatList>
       </SideBar>

@@ -47,6 +47,7 @@ function MessageFooter({
               d="M5 10l7-7m0 0l7 7m-7-7v18"
             ></path>
           </svg>
+          ;
         </button>
       </form>
       <p className="text-center text-xs text-gray-400 mt-3">
